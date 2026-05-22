@@ -116,7 +116,7 @@ class Module(ndb.Model):
     """ Represents a single Module """
     m_title = ndb.StringProperty()
     m_description = ndb.StringProperty()
-    m_icon = ndb.BlobProperty(indexed=False)
+    m_icon = ndb.StringProperty(indexed=False)
     m_index = ndb.IntegerProperty()
     m_identifier = ndb.StringProperty()
     
@@ -136,7 +136,7 @@ class Course(ndb.Model):
     c_title = ndb.StringProperty()
     c_url_title = ndb.StringProperty()
     c_description = ndb.StringProperty()
-    c_icon = ndb.BlobProperty(indexed=False)
+    c_icon = ndb.StringProperty(indexed=False)
     c_index = ndb.IntegerProperty()
     c_identifier = ndb.StringProperty()
 

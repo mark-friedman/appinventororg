@@ -12,9 +12,8 @@ from google.appengine.api import memcache
 from google.appengine.api import users
 from google.appengine.ext import db
 from google.appengine.ext import ndb
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
-from google.appengine.ext.webapp.util import run_wsgi_app
+import webapp_compat as webapp
+from webapp_compat import template, run_wsgi_app
 
 from datastore import Account, RSSItem
 from datastore import App
@@ -24,7 +23,7 @@ from datastore import Module, Content, Course
 from datastore import Step
 from datastore import Tutorial
 from datastore import TutorialStep
-import gdata.analytics.client
+# import gdata.analytics.client
 from geopy import geocoders
 
 
@@ -54,7 +53,7 @@ def getCoursesAndModules():
     for course in courses: 
         # fetch modules for the current course
         modulesList = []
-        course_id = long(course.key.id())
+        course_id = int(course.key.id())
         modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, course_id)).order(Module.m_index).fetch() 
         for module in modules:
             modulesList.append((str(module.m_title), "/content/" + course.c_identifier + "/" + module.m_identifier))
@@ -95,7 +94,7 @@ def redirector(requesthandler):
 
 
 def intWithCommas(x):
-    if type(x) not in [type(0), type(0L)]:
+    if not isinstance(x, int):
         raise TypeError("Parameter must be an integer.")
     if x < 0:
         return '-' + intWithCommas(-x)
@@ -640,7 +639,7 @@ class MediaFilesHandler(webapp.RequestHandler):
 
 class StructureHandler(webapp.RequestHandler):
     def get(self):
-    	courses = getCourses()                    
+        courses = getCourses()                    
                     
         userStatus = UserStatus().getStatus(self.request.uri)
         
@@ -4669,8 +4668,8 @@ class DeleteCommentHandler (webapp.RequestHandler):
             self.redirect(self.request.get('redirect_link'))
         else:
             
-            print 'Content-Type: text/plain'
-            print 'You are NOT administrator'
+            self.response.headers['Content-Type'] = 'text/plain'
+            self.response.out.write('You are NOT administrator')
         
  
 
@@ -5043,8 +5042,8 @@ class MemcacheFlushHandler(webapp.RequestHandler):
             else:
                 self.redirect("/Admin")
         else:        
-            print 'Content-Type: text/plain'
-            print 'You are NOT administrator'        
+            self.response.headers['Content-Type'] = 'text/plain'
+            self.response.out.write('You are NOT administrator')        
         return
 
 
@@ -5247,7 +5246,7 @@ class UpdateDatabase (webapp.RequestHandler):
             if account.lastName == None:
                 account.lastName = ""
                 b = True
-                print account.displayName
+                print(account.displayName)
             if account.firstName == None:
                 account.firstName = ""
                 b = True
@@ -5304,10 +5303,10 @@ class UpdateGEODatabase (webapp.RequestHandler):
                     account.longitude = lng
                     account.put()
                 except:
-                    print "account_key:" + str(account.key()) + "\n"
-                    print "account_name:" + account.displayName + "\n"
+                    print("account_key:" + str(account.key()) + "\n")
+                    print("account_name:" + account.displayName + "\n")
                     # print "account_location:" + account.location + "\n"
-                    print "\n"
+                    print("\n")
         return
 
 class PrintOut (webapp.RequestHandler):
@@ -5319,8 +5318,8 @@ class PrintOut (webapp.RequestHandler):
            
         place, (lat, lng) = g.geocode(account.location)
 
-        print lat
-        print lng
+        print(lat)
+        print(lng)
 
         return
     
@@ -5349,7 +5348,7 @@ class ConvertProfileName1 (webapp.RequestHandler):
                     account.put()
                 
             except:
-                 print "1"
+                 print("1")
         return
 class ConvertProfileName2 (webapp.RequestHandler):
     def get(self):
@@ -6165,7 +6164,7 @@ class ContentsHandler(webapp.RequestHandler):
     TODO: Phase out unused template variables with courseToModules!
     I think there are some redudant ones in here.
     """
-    def get(self, module_ID="", course_ID=""):
+    def get(self, course_ID="", module_ID=""):
         # retrieve corresponding contents entities
         
         # retrieve the key of the course entity with the course_title
@@ -6178,7 +6177,7 @@ class ContentsHandler(webapp.RequestHandler):
         else:
             course_entity = x[0]
             # course exists, attempt to look up module title entity
-            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
+            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
             if len(x) == 0:
                 template_values = {}
                 path = os.path.join(os.path.dirname(__file__), 'pages/pagenotfound.html')
@@ -6186,14 +6185,14 @@ class ContentsHandler(webapp.RequestHandler):
             else:
                 # module and course exist, display the page!
                 module_entity = x[0]
-                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).order(Content.c_index).fetch()
+                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).order(Content.c_index).fetch()
                 
                 # retrieve all of the courses for the navbar
                 courses = getCourses()
                 
                 # construct dictionary of courses to modules mapping
 
-                modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).order(Module.m_index).fetch()    
+                modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).order(Module.m_index).fetch()    
                 
              
                 userStatus = UserStatus().getStatus(self.request.uri)
@@ -6233,7 +6232,7 @@ class ContentHandler(webapp.RequestHandler):
         else:
             course_entity = x[0]
             # course exists, attempt to look up module title entity
-            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
+            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
             if len(x) == 0:
                 template_values = {}
                 path = os.path.join(os.path.dirname(__file__), 'pages/pagenotfound.html')
@@ -6242,7 +6241,7 @@ class ContentHandler(webapp.RequestHandler):
                 # module and course exist, attempt to look up content
                 module_entity = x[0]
                 
-                content = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).filter(Content.c_identifier == content_ID).fetch()
+                content = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).filter(Content.c_identifier == content_ID).fetch()
                 
                 if len(content) == 0:
                     template_values = {}
@@ -6253,7 +6252,7 @@ class ContentHandler(webapp.RequestHandler):
                     content = content[0]
                     
                     # must look up all content in current module
-                    module_contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).order(Content.c_index).fetch()
+                    module_contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).order(Content.c_index).fetch()
                     
                     
                     
@@ -6261,10 +6260,10 @@ class ContentHandler(webapp.RequestHandler):
                     courses = getCourses()
                     
                     # look up all the modules in the current course for display in the left nav bar
-                    modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).order(Module.m_index).fetch()
+                    modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).order(Module.m_index).fetch()
                     
                     # look up the next_module_entity
-                    next_module_entity = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_index > module_entity.m_index).order(Module.m_index).fetch()
+                    next_module_entity = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_index > module_entity.m_index).order(Module.m_index).fetch()
                     
                     if len(next_module_entity) == 0:
                         next_module_entity = "null"
@@ -6280,7 +6279,7 @@ class ContentHandler(webapp.RequestHandler):
                         # initialize key in mapping
                         moduleContentMapping[str(module.m_title)] = ['null']
                         # now look up the content associated with this module
-                        contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module.key.id()))).order(Content.c_index).fetch()
+                        contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module.key.id()))).order(Content.c_index).fetch()
                         for mod_content in contents:                     
                             moduleContentMapping[str(module.m_title)].append(mod_content)
 
@@ -6365,7 +6364,7 @@ class AdminModuleDisplayHandler(webapp.RequestHandler):
                 moduleContentMapping[str(module.m_title)] = [module.m_icon]
                 moduleContentMapping[str(module.m_title)].append(module.m_description)
                 # now look up the content associated with this module
-                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(courseId), Module, long(module.key.id()))).order(Content.c_index).fetch()
+                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(courseId), Module, int(module.key.id()))).order(Content.c_index).fetch()
                 for mod_content in contents:                     
                     moduleContentMapping[str(module.m_title)].append(mod_content)
              
@@ -6396,7 +6395,7 @@ class AdminContentsDisplayHandler(webapp.RequestHandler):
         else:
             course_entity = x[0]
             # course exists, attempt to look up module title entity
-            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
+            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
             if len(x) == 0:
                 template_values = {}
                 path = os.path.join(os.path.dirname(__file__), 'pages/pagenotfound.html')
@@ -6404,7 +6403,7 @@ class AdminContentsDisplayHandler(webapp.RequestHandler):
             else:
                 # module and course exist, display the page!
                 module_entity = x[0]
-                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).order(Content.c_index).fetch()
+                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).order(Content.c_index).fetch()
         
                 userStatus = UserStatus().getStatus(self.request.uri)
         
@@ -6443,7 +6442,7 @@ class AdminContentDisplayHandler(webapp.RequestHandler):
         else:
             course_entity = x[0]
             # course exists, attempt to look up module title entity
-            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
+            x = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_identifier == module_ID).fetch()
             if len(x) == 0:
                 template_values = {}
                 path = os.path.join(os.path.dirname(__file__), 'pages/pagenotfound.html')
@@ -6452,7 +6451,7 @@ class AdminContentDisplayHandler(webapp.RequestHandler):
                 # module and course exist, attempt to look up content
                 module_entity = x[0]
                 
-                content = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).filter(Content.c_identifier == content_ID).fetch()
+                content = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).filter(Content.c_identifier == content_ID).fetch()
                 
                 if len(content) == 0:
                     template_values = {}
@@ -6465,7 +6464,7 @@ class AdminContentDisplayHandler(webapp.RequestHandler):
                     # self.response.out.write("<h4>Okay we need to look up a content item called: " + content_Title + " inside of  module called: " + module_Title + " inside of course called: " + course_Title + "</h4>")
         
                     # must look up all content in current module
-                    module_contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()), Module, long(module_entity.key.id()))).order(Content.c_index).fetch()
+                    module_contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()), Module, int(module_entity.key.id()))).order(Content.c_index).fetch()
                     
                     
                     # look up userstatus for globalnavbar
@@ -6476,7 +6475,7 @@ class AdminContentDisplayHandler(webapp.RequestHandler):
 
 
                     # look up the next_module_entity
-                    next_module_entity = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course_entity.key.id()))).filter(Module.m_index > module_entity.m_index).order(Module.m_index).fetch()
+                    next_module_entity = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course_entity.key.id()))).filter(Module.m_index > module_entity.m_index).order(Module.m_index).fetch()
                     
                     if len(next_module_entity) == 0:
                         next_module_entity = "null"
@@ -6523,7 +6522,7 @@ class AdminCourseSystemCreateHandler(webapp.RequestHandler):
             icon = str(self.request.get("icon"))
             course_id = self.request.get("course_id")
             identifier = self.request.get("s_identifier")
-            new_module = Module(parent=ndb.Key('Courses', 'ADMINSET', Course, long(course_id)), m_title=title, m_description=description, m_icon=icon, m_identifier=identifier)        
+            new_module = Module(parent=ndb.Key('Courses', 'ADMINSET', Course, int(course_id)), m_title=title, m_description=description, m_icon=icon, m_identifier=identifier)        
             new_module.put()   
         elif kind == "Content":
             title = self.request.get("s_title")
@@ -6538,7 +6537,7 @@ class AdminCourseSystemCreateHandler(webapp.RequestHandler):
             old_urls = str(old_urls).split()
             logging.info(str(old_urls) + " " + str(type(old_urls)))
             
-            new_content = Content(parent=ndb.Key('Courses', 'ADMINSET', Course, long(course_id), Module, long(module_id)), c_title=title, c_description=description, c_type=content_type, c_url=file_path)
+            new_content = Content(parent=ndb.Key('Courses', 'ADMINSET', Course, int(course_id), Module, int(module_id)), c_title=title, c_description=description, c_type=content_type, c_url=file_path)
             new_content.c_identifier = identifier
             new_content.c_url = file_path
             new_content.c_oldurls = old_urls
@@ -6549,11 +6548,11 @@ class AdminCourseSystemCreateHandler(webapp.RequestHandler):
 class AdminCourseSystemDeleteHandler(webapp.RequestHandler):
     def post(self, kind=""):
         if kind == "Course":            
-            ndb.delete_multi(ndb.Query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(self.request.get("course_id")))).iter(keys_only=True))
+            ndb.delete_multi(ndb.Query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(self.request.get("course_id")))).iter(keys_only=True))
         elif kind == "Module":
-            ndb.delete_multi(ndb.Query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(self.request.get("course_id")), Module, long(self.request.get("module_id")))).iter(keys_only=True))    
+            ndb.delete_multi(ndb.Query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(self.request.get("course_id")), Module, int(self.request.get("module_id")))).iter(keys_only=True))    
         elif kind == "Content":
-            ndb.Key('Courses', 'ADMINSET', Course, long(self.request.get("course_id")), Module, long(self.request.get("module_id")), Content, long(self.request.get("content_id"))).delete()
+            ndb.Key('Courses', 'ADMINSET', Course, int(self.request.get("course_id")), Module, int(self.request.get("module_id")), Content, int(self.request.get("content_id"))).delete()
         else:
             logging.error("An invalid kind was attempted to be deleted: " + kind)
 
@@ -6564,7 +6563,7 @@ class AdminCourseSystemReorderHandler(webapp.RequestHandler):
             x = 0;
             while(x < len(orderArray) - 1):
                 # retrieve corresponding course entity and update index
-                course = ndb.Key('Courses', 'ADMINSET', Course, long(orderArray[x + 1])).get()
+                course = ndb.Key('Courses', 'ADMINSET', Course, int(orderArray[x + 1])).get()
                 course.c_index = int(orderArray[x])
                 course.put()
                 x += 2
@@ -6574,7 +6573,7 @@ class AdminCourseSystemReorderHandler(webapp.RequestHandler):
             x = 0;
             while(x < len(orderArray) - 1):
                 # retrieve corresponding module and update index
-                module = ndb.Key('Courses', 'ADMINSET', Course, long(self.request.get("course_id")), Module, long(orderArray[x + 1])).get()
+                module = ndb.Key('Courses', 'ADMINSET', Course, int(self.request.get("course_id")), Module, int(orderArray[x + 1])).get()
                 module.m_index = int(orderArray[x])
                 module.put()
                 x += 2
@@ -6583,7 +6582,7 @@ class AdminCourseSystemReorderHandler(webapp.RequestHandler):
             x = 0;
             while(x < len(orderArray) - 1):
                 # retrieve corresponding content and update index
-                content = ndb.Key('Courses', 'ADMINSET', Course, long(self.request.get("s_course_id")), Module, long(self.request.get("s_module_id")), Content, long(orderArray[x + 1])).get()
+                content = ndb.Key('Courses', 'ADMINSET', Course, int(self.request.get("s_course_id")), Module, int(self.request.get("s_module_id")), Content, int(orderArray[x + 1])).get()
                 content.c_index = int(orderArray[x])
                 content.put()
                 x += 2
@@ -6600,7 +6599,7 @@ class AdminCourseSystemUpdateHandler(webapp.RequestHandler):
             icon = str(self.request.get('s_icon'))
             identifier = self.request.get('s_identifier')
             # retrieve course entity and update it
-            course = ndb.Key('Courses', 'ADMINSET', Course, long(course_id)).get()
+            course = ndb.Key('Courses', 'ADMINSET', Course, int(course_id)).get()
             course.c_title = title
             course.c_description = description
             course.c_icon = icon
@@ -6614,7 +6613,7 @@ class AdminCourseSystemUpdateHandler(webapp.RequestHandler):
             icon = str(self.request.get('s_icon'))
             identifier = self.request.get('s_identifier')
             # retrieve module entity and update it
-            module = ndb.Key('Courses', 'ADMINSET', Course, long(course_id), Module, long(module_id)).get()
+            module = ndb.Key('Courses', 'ADMINSET', Course, int(course_id), Module, int(module_id)).get()
             module.m_title = title
             module.m_description = description
             module.m_icon = icon
@@ -6633,7 +6632,7 @@ class AdminCourseSystemUpdateHandler(webapp.RequestHandler):
             # split oldurls into list
             oldUrlList = oldurls.split()    
             # retrieve content entity and update it
-            content = ndb.Key('Courses', 'ADMINSET', Course, long(course_id), Module, long(module_id), Content, long(content_id)).get()
+            content = ndb.Key('Courses', 'ADMINSET', Course, int(course_id), Module, int(module_id), Content, int(content_id)).get()
             content.c_title = title
             content.c_description = description
             content.c_url = url
@@ -6716,10 +6715,10 @@ class AdminImportCoursesHandler(webapp.RequestHandler):
         # for every course
         for course in courses:
             # for every module
-            modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id()))).order(Module.m_index).fetch()
+            modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id()))).order(Module.m_index).fetch()
             for module in modules:
                 # for every content
-                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id()), Module, long(module.key.id()))).order(Content.c_index).fetch()
+                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id()), Module, int(module.key.id()))).order(Content.c_index).fetch()
                 for content in contents:
                     keysToDelete += [content.key]
                 keysToDelete += [module.key]
@@ -6730,6 +6729,7 @@ class AdminImportCoursesHandler(webapp.RequestHandler):
         importFileContents = self.request.get("s_File_Contents")
         i = 0
         splitContent = importFileContents.split('\n')
+        contents_to_put = []
         while i < len(splitContent) - 1:
             course_Title = splitContent[i]
             i += 1      
@@ -6743,7 +6743,7 @@ class AdminImportCoursesHandler(webapp.RequestHandler):
             i += 1     
             
             if course_Index == 'None':
-                courses_Index = 0
+                course_Index = 0
             
             course = Course(parent=ndb.Key('Courses', 'ADMINSET'), c_title=course_Title, c_description=course_Description, c_icon=str(course_Icon), c_index=int(course_Index), c_identifier=course_Identifier)
             course.put()
@@ -6763,7 +6763,7 @@ class AdminImportCoursesHandler(webapp.RequestHandler):
                 if module_Index == 'None':
                         module_Index = 0
                 
-                module = Module(parent=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id())), m_title=module_Title, m_description=module_Description, m_icon=str(module_Icon), m_index=int(module_Index), m_identifier=module_Identifier)
+                module = Module(parent=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id())), m_title=module_Title, m_description=module_Description, m_icon=str(module_Icon), m_index=int(module_Index), m_identifier=module_Identifier)
                 module.put()
                 
                 while splitContent[i] != "*****":
@@ -6785,11 +6785,17 @@ class AdminImportCoursesHandler(webapp.RequestHandler):
                     if content_Index == 'None':
                         content_Index = 0
                    
-                    content = Content(parent=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id()), Module, long(module.key.id())), c_title=content_Title, c_description=content_Description, c_type=content_Type, c_url=content_URL , c_index=int(content_Index), c_identifier=content_Identifier)
+                    content = Content(parent=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id()), Module, int(module.key.id())), c_title=content_Title, c_description=content_Description, c_type=content_Type, c_url=content_URL , c_index=int(content_Index), c_identifier=content_Identifier)
                     content.c_oldurls = content_oldurlsList
-                    content.put() 
+                    contents_to_put.append(content)
+                    if len(contents_to_put) >= 200:
+                        ndb.put_multi(contents_to_put)
+                        contents_to_put = []
                 i += 1
             i += 1
+            
+        if contents_to_put:
+            ndb.put_multi(contents_to_put)
           
 
 
@@ -6803,11 +6809,11 @@ class AdminSerialViewHandler(webapp.RequestHandler):
         for course in courses:
             output += course.c_title + "\n" + course.c_description + "\n" + course.c_icon + "\n" + str(course.c_index) + "\n" + course.c_identifier + "\n"
             # for every module
-            modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id()))).order(Module.m_index).fetch()
+            modules = Module.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id()))).order(Module.m_index).fetch()
             for module in modules:
                 output += module.m_title + "\n" + module.m_description + "\n" + module.m_icon + "\n" + str(module.m_index) + "\n" + module.m_identifier + "\n"
                 # for every content
-                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, long(course.key.id()), Module, long(module.key.id()))).order(Content.c_index).fetch()
+                contents = Content.query(ancestor=ndb.Key('Courses', 'ADMINSET', Course, int(course.key.id()), Module, int(module.key.id()))).order(Content.c_index).fetch()
                 for content in contents:
                     logging.info(str(content.c_oldurls))
                     

@@ -5,3 +5,6 @@ gdata/
 geopy/
 atom/
 app.yaml
+venv/
+__pycache__/
+.agents/

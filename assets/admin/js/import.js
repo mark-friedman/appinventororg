@@ -22,9 +22,15 @@ $(document).ready(function() {
 
 			$.post("/admin/importcourses", {
 				s_File_Contents : reader.result,
-			}, function(data, status) {
+			})
+			.done(function(data, status) {
 				$(".loading-icon").removeClass("visible");
 				location.reload(true);
+			})
+			.fail(function(xhr, status, error) {
+				$(".loading-icon").removeClass("visible");
+				console.error("Import failed:", status, error, xhr.status, xhr.responseText);
+				alert("Import failed (" + xhr.status + "): " + (error || "Unknown Error") + "\nCheck browser console and server logs for details.");
 			});
 		}
 		reader.readAsText(file);

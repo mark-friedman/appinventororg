@@ -1,0 +1,42 @@
+# App Engine Python 3 Migration Rules
+
+This file guides the migration of the Python 2.7 App Engine codebase to Python 3 and modern Google Cloud APIs.
+
+## Architecture Guidelines
+
+1. **Framework Adapter Strategy**:
+   - Do NOT rewrite all 400+ request handlers manually to Flask/Django view functions.
+   - Use a lightweight adapter/shim (`webapp_compat.py`) that emulates `webapp.RequestHandler` and `webapp.WSGIApplication` on top of Flask.
+   - Map Flask routes to the existing `webapp.WSGIApplication` regex routing table.
+
+2. **Template Rendering**:
+   - Use Jinja2 as the template engine inside the compatibility layer.
+   - Add a custom `slice` filter to Jinja2 to support the Django-style `slice` filter (e.g., `value|slice:":1"`) used throughout the HTML templates without modifying the HTML files.
+   - Keep template rendering logic separated in `webapp_compat.py`.
+
+3. **Google App Engine / GCP Services**:
+   - **Lift-and-Shift (Phase 1)**: Use Google App Engine Legacy Bundled Services.
+     - Add `appengine-python-standard>=1.0.0` in `requirements.txt`.
+     - Set `app_engine_apis: true` in `app.yaml`.
+     - Wrap the Flask WSGI application using `google.appengine.api.wrap_wsgi_app(app)`.
+     - This preserves legacy APIs: `db`, `ndb`, `users`, `memcache`, `mail`, and `images` with minimal changes.
+   - **Modernization (Phase 2)**:
+     - Incrementally replace `google.appengine.ext.db` models with `ndb` or Cloud NDB models.
+     - Use `google-cloud-ndb` for Datastore access (wrapping operations in NDB client contexts).
+     - Replace other legacy APIs (Images -> Pillow/GCS, Mail -> SendGrid, Users -> OAuth2/Firebase) with modern Google Cloud client libraries.
+
+4. **Dependency Management**:
+   - Do NOT vendor Python libraries. Remove the local copies of libraries like `geopy` and `feedparser` in the final cleanup.
+   - List all third-party dependencies in `requirements.txt` (`Flask`, `Jinja2`, `geopy`, `feedparser`, etc.).
+
+## Python 3 Syntax Guidelines
+
+- Convert all Python 2 code to Python 3:
+  - `print "message"` -> `print("message")`
+  - `.iteritems()`, `.iterkeys()`, `.itervalues()` -> `.items()`, `.keys()`, `.values()`
+  - `urllib` / `urllib2` -> `urllib.request` / `urllib.parse` / `urllib.error`
+  - `xrange` -> `range`
+  - `long` -> `int`
+  - Remove L suffix on integers (e.g., `0L` -> `0`)
+  - Use relative/absolute imports compatible with Python 3.
+  - Correct binary/unicode string conversions (specifically when handling `BlobProperty` or network requests).
